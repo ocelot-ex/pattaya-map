@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Паттайя — карта под обменник (зоны + Foodmart) · редактируемая</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.min.js"></script>
+<style>
+  :root{--red:#e23b3b;--orange:#f08c00;--green:#1faa59;--gray:#8a8f98;--ink:#1d2733;--bg:#f5f7fa;--blue:#16548a;--purple:#9b59b6;--teal:#7a4a2b;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55}
+  header{background:linear-gradient(135deg,#0f3460,#16548a);color:#fff;padding:22px 18px}
+  header h1{margin:0 0 6px;font-size:22px}
+  header p{margin:0;opacity:.92;font-size:14px}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 8px}
+  .toolbar button{border:0;border-radius:9px;padding:9px 13px;font-size:13px;font-weight:600;cursor:pointer;color:#fff;background:var(--blue)}
+  .toolbar button.alt{background:#5b6b7a}
+  .toolbar button.danger{background:#c0392b}
+  .toolbar button:hover{filter:brightness(1.08)}
+  .hint{font-size:13px;color:#56616e;background:#eef3f8;border:1px solid #dce6ef;border-radius:9px;padding:8px 11px;margin:6px 0}
+  #map{height:620px;width:100%;border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,.12);z-index:0}
+  .legend{display:flex;flex-wrap:wrap;gap:13px;margin:14px 0 4px;font-size:13.5px}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .dot{width:14px;height:14px;border-radius:50%;display:inline-block;border:2px solid #fff;box-shadow:0 0 0 1px #999}
+  .dot.r{background:var(--red)}.dot.o{background:var(--orange)}.dot.g{background:var(--green)}.dot.k{background:var(--gray)}.dot.f{background:#1668c4}.dot.a{background:var(--teal)}
+  .line{width:22px;height:5px;border-radius:3px;display:inline-block}
+  section{background:#fff;border-radius:14px;padding:18px;margin:18px 0;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  h2{margin:0 0 12px;font-size:19px}
+  h3{margin:0 0 6px;font-size:16px}
+  .verdict{border-left:5px solid var(--green);background:#eafaf1}
+  .verdict b{color:#137a44}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .scroll{overflow-x:auto}
+  th,td{padding:9px 10px;text-align:left;border-bottom:1px solid #eceff3;vertical-align:top}
+  th{background:#f0f3f7;font-weight:600;white-space:nowrap}
+  tr.best td{background:#f2fbf6}
+  tr.bad td{background:#fcf0f0;color:#7a3a3a}
+  .zhead td{background:#eef3f8;font-weight:700;color:#22425e}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
+  .b-red{background:var(--red)}.b-org{background:var(--orange)}.b-grn{background:var(--green)}.b-blk{background:#222}.b-blue{background:#1668c4}.b-gray{background:#8a8f98}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+  .card{border:1px solid #e6ebf1;border-radius:12px;padding:14px;background:#fcfdff}
+  .card.top{border-color:#1faa59;box-shadow:0 0 0 2px #e3f7ec inset}
+  .card h3{display:flex;align-items:center;gap:8px}
+  .kv{font-size:13px;margin:3px 0}.kv b{color:#33424f}
+  .score{display:inline-block;font-weight:700;color:#fff;border-radius:8px;padding:2px 9px;font-size:13px}
+  .pros{color:#1c7a47;font-size:13px;margin:6px 0 0}
+  .cons{color:#b5462f;font-size:13px;margin:4px 0 0}
+  .note{font-size:13px;color:#667;margin-top:8px}
+  ul{margin:6px 0 0 0;padding-left:18px}li{margin:2px 0}
+  footer{text-align:center;color:#8a8f98;font-size:12px;padding:18px}
+  .leaflet-popup-content{font-size:13px;line-height:1.45}
+  .zonelbl{background:rgba(255,255,255,.82);border:0;box-shadow:none;font-weight:700;font-size:12px;color:#22425e}
+  .cmtlbl{color:#fff;background:#1d2733;border:0;font-weight:700;font-size:12.5px;padding:4px 9px;border-radius:8px;box-shadow:0 2px 7px rgba(0,0,0,.45);white-space:nowrap}
+  .cmtlbl .leaflet-tooltip-tip{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>🗺️ Паттайя — карта под обменник · зоны, конкуренты, помещения</h1>
+  <p>Цель: пункт обмена, 1 этаж / витрина, до 40 000 ฿/мес. Веса: <b>пеший трафик · низкая аренда · витрина 1 этажа</b>. Жёстко: <b>подальше от крипто/рубль-конкурентов</b>. Обновлено 29.05.2026 — расширенный поиск (Google Maps, FazWaz.ru, Thailand-Property, DotProperty, BahtSold, Hipflat, kaibaanthai, агентства). 🔴=крипта/рубли · 🟠=фиат-будка · 🟢=помещение · 🏠=агентство.</p>
+</header>
+
+<div class="wrap">
+
+  <div class="toolbar">
+    <span style="font-weight:700;align-self:center">Кто редактирует:</span>
+    <button id="ed-roman" style="background:#8e44ad" onclick="setEditor('Роман')">🟣 Роман</button>
+    <button id="ed-oleg" style="background:#1a3e8c" onclick="setEditor('Олег')">🔵 Олег</button>
+    <button class="alt" onclick="startComment()">💬 Комментарий на карте</button>
+    <span id="editorInd" style="align-self:center;font-size:13px"></span>
+  </div>
+  <div class="toolbar">
+    <button onclick="exportMarks()">💾 Сохранить пометки в файл</button>
+    <button class="alt" onclick="document.getElementById('imp').click()">📂 Загрузить / объединить</button>
+    <input type="file" id="imp" accept="application/json" style="display:none" onchange="importMarks(this)">
+    <button class="alt" onclick="undoLast()">↩️ Отменить последнее</button>
+    <button class="danger" onclick="clearMarks()">🗑 Очистить все пометки</button>
+    <button class="alt" onclick="fitFoodmart()">🎯 К Foodmart</button>
+  </div>
+  <div class="hint">
+    👉 <b>Клик по 🟢 помещению</b> — откроется карточка с кнопкой «🔗 Смотреть объявление» (полная реклама о сдаче). Клик по 🔴 конкуренту / 🏠 агентству — их точка на Google&nbsp;Maps.<br>
+    ✏️ <b>Рисуете вдвоём:</b> выбери сверху <b style="color:#8e44ad">🟣 Роман</b> или <b style="color:#1a3e8c">🔵 Олег</b> — пометки будут твоим цветом и подписаны именем. Рисуй панелью слева (📍 точка, ╱ линия, ⬠ зона, ◯ круг) или жми <b>💬 Комментарий</b> и кликни по карте. Двойной клик по пометке — добавить/изменить текст. Всё <b>сохраняется само</b>. Справа — слои и <b>🛰 Спутник</b>. Нужен интернет.
+  </div>
+  <div id="map"></div>
+
+  <div class="legend">
+    <span><i class="dot f"></i> 🎯 Foodmart</span>
+    <span><i class="dot g"></i> 🟢 Помещения</span>
+    <span><i class="dot r"></i> 🔴 Крипта/рубли</span>
+    <span><i class="dot o"></i> 🟠 Фиат-будки</span>
+    <span><i class="dot a"></i> 🏠 Агентства</span>
+    <span><i class="dot k"></i> ⚫ Банк</span>
+    <span><i class="line" style="background:#16548a"></i> Тапрайя</span>
+    <span><i class="line" style="background:#e07b00"></i> Тхеппрасит</span>
+    <span><i class="line" style="background:#11b3c6"></i> Джомтьен-Бич</span>
+    <span><i class="line" style="background:#2aa84a"></i> Джомтьен 2-я</span>
+  </div>
+
+  <section class="verdict">
+    <h2>✅ Вывод и рекомендация</h2>
+    <p><b>Лучшее место по локации — стык Тапрайя/Джомтьен у Foodmart (целевая зона):</b> главная дорога, супермаркет Foodmart (2452 отзыва, до 00:00), плотные кондо, рядом пляж Донгтан и спуск к Джомтьену. Самый близкий подходящий объект — <b>★ View Talay 7</b> (~350 м от Foodmart, 17–18k, 48 м², 1 этаж). <b>Важно:</b> один источник показывает его <b>сданным до января 2027</b> — нужно позвонить агенту (Pattaya Condo&amp;Homes, +66 64 249 1428) и спросить этот или соседние юниты в том же доме.</p>
+    <p><b>Подстраховка (если VT7 занят):</b> 🟢 <b>Jomtien Complex</b> (15k, 30 м², ~700 м — но формат «лофт», уточнить назначение); 🟢 <b>Mini Mart на Jomtien Soi 7</b> (35k, 52 м², витрина у пляжа); 🟢 <b>Тхеппрасит-роуд</b> (32k, 65 м², витрина на главную улицу, трафик рынка). Дешёвый запасной — 🟢 shop на Тапрайя 10k/20 м² (мелкий, объявление 2024 — проверить актуальность).</p>
+    <p><b>Где НЕ брать:</b> 🔴 ядро Пратумнака (Русский рынок, Soi 4–6) — там Senate/EX24/Cash&Go. Дешёвые Siam Oriental и Pratumnak 5 сидят рядом с гнездом. И помни про новичка <b>Money Exchange Group</b> (рубли/Сбер) в 625 м северо-западнее Foodmart — в зоне Foodmart бери точку <b>южнее/восточнее</b>, к Джомтьену.</p>
+    <p class="note">Объявлений строго «на Тапрайя у Foodmart» в базах нет — эта точка добывается через агентов (список ниже) или «ногами» по вывескам ให้เช่า. Кандидаты с «≈» — район верный, точка приблизительная (адрес уточнять у агента).</p>
+  </section>
+
+  <section>
+    <h2>🏢 Кандидаты-помещения <span style="font-weight:400;font-size:14px;color:#667">(≤40 000 ฿, по зонам · 10+ сайтов)</span></h2>
+    <div class="scroll">
+    <table>
+      <tr><th>Объект</th><th>Цена/мес</th><th>Площ.</th><th>1 этаж/витрина</th><th>До Foodmart</th><th>Свежесть · статус</th><th>Ссылка</th></tr>
+
+      <tr class="zhead"><td colspan="7">🎯 ЦЕЛЕВАЯ ЗОНА — Тапрайя / стык Джомтьен (приоритет)</td></tr>
+      <tr class="best"><td><span class="badge b-grn">★ ТОП</span> View Talay 7 (комм. блок у пляжа)</td><td>17–18 000 ฿</td><td>48 м²</td><td>✅ 1 этаж</td><td><b>≈350 м</b></td><td>⚠️ возможно сдан до 2027 — звонить</td><td><a href="https://www.thailand-property.com/ads/commercial-for-rent-in-view-talay-condo-7-nong-prue-chonburi_8e29f15837d7-9971-0362-88e0-95e5d089" target="_blank">смотреть</a></td></tr>
+      <tr><td>🟢 Jomtien Complex — студия-магазин</td><td>15 000 ฿</td><td>30 м²</td><td>⚠️ формат «лофт»</td><td>≈700 м</td><td>активно · уточнить назначение</td><td><a href="https://www.kaibaanthai.com/en/property-rent/studio-shophouse-for-rent-in-nong-prue-pattaya-u6205702" target="_blank">kaibaanthai</a></td></tr>
+      <tr><td>🟢 Shop на Тапрайя (под кондо)</td><td>10 000 ฿</td><td>20 м²</td><td>✅ 1 этаж</td><td>≈1.3 км</td><td>объявл. 2024 — проверить</td><td><a href="https://www.bahtsold.com/view/shop-for-rent-tappraya-road-pratamnak-at-south-pattaya-10-000-baht-514991" target="_blank">BahtSold</a></td></tr>
+
+      <tr class="zhead"><td colspan="7">🟢 ДЖОМТЬЕН (чисто по конкурентам, высокий трафик)</td></tr>
+      <tr><td>🟢 Mini Mart — Jomtien Soi 7 (передача бизнеса)</td><td>35 000 ฿</td><td>52 м²</td><td>✅ витрина, 50 м от пляжа</td><td>≈1.3 км</td><td>дек 2024</td><td><a href="https://www.kaibaanthai.com/en/property-rent/shophouse-for-rent-in-bang-lamung-pattaya-u1983089" target="_blank">kaibaanthai</a></td></tr>
+      <tr><td>🟢 Джомтьен 2-я дорога — PP12322/25</td><td>32.5–37.5 000 ฿</td><td>65–75 м²</td><td>офис-формат</td><td>≈1.7 км</td><td>активно</td><td><a href="https://www.thailand-property.com/ads/1-bedroom-commercial-for-rent-in-nong-prue-chonburi_987eee334c8f-bcd1-d762-0a8d-3e81c089" target="_blank">смотреть</a></td></tr>
+      <tr><td>🟢 Commercial Джомтьен (Jim Property, у пляжа)</td><td>35 000 ฿ + 300k вход</td><td>256 м²</td><td>✅ 1 этаж (большой)</td><td>≈1.6 км</td><td>сен 2025</td><td><a href="https://jimpropertyexperts.com/property/commercial-space-in-jomtien/" target="_blank">смотреть</a></td></tr>
+
+      <tr class="zhead"><td colspan="7">🟡 ТХЕППРАСИТ (рынок, очень высокий трафик вечером)</td></tr>
+      <tr><td>🟢 Тхеппрасит-роуд (фронт на дорогу)</td><td>32 000 ฿</td><td>65 м²</td><td>✅ 1 этаж, витрина</td><td>≈2.0 км</td><td>обновл. ~1 мес</td><td><a href="https://www.kaibaanthai.com/en/property-rent/3-bedroom-commercial-for-rent-in-bang-lamung-pattaya-u6218748" target="_blank">kaibaanthai</a></td></tr>
+      <tr><td>🟢 Shop South Pattaya Soi 3</td><td>30–35 000 ฿</td><td>80 м²</td><td>✅ витрина</td><td>≈2.2 км</td><td>свежее (28.01.26)</td><td><a href="https://www.bahtsold.com/view/shop-space-in-south-pattaya-soi-3-ready-for-business--566883" target="_blank">BahtSold</a></td></tr>
+      <tr><td>🟢 Shop Soi Buakhao (центр)</td><td>37 000 ฿</td><td>38 м²</td><td>✅ 1 этаж</td><td>≈2.8 км</td><td>торговая улица</td><td><a href="https://www.kaibaanthai.com/en/property-rent/1-bedroom-shophouse-for-rent-in-bang-lamung-pattaya-u6163167" target="_blank">kaibaanthai</a></td></tr>
+
+      <tr class="zhead"><td colspan="7">🔴 ПРАТУМНАК — дёшево/витрины, НО рядом обменное гнездо (осторожно)</td></tr>
+      <tr class="bad"><td>⚠️ Siam Oriental Plaza</td><td>16 000 ฿</td><td>42 м²</td><td>в кондо-блоке</td><td>≈1.5 км</td><td>апр 2026 · в гнезде</td><td><a href="https://www.kaibaanthai.com/en/property-rent/shophouse-for-rent-at-siam-oriental-plaza-in-nong-prue-pattaya-u6155969" target="_blank">kaibaanthai</a></td></tr>
+      <tr class="bad"><td>⚠️ Siam Oriental Star (Soi 6)</td><td>27 000 ฿</td><td>28 м²</td><td>✅ 1 этаж</td><td>≈1.6 км</td><td>· у Русского рынка</td><td><a href="https://www.kaibaanthai.com/en/property-rent/studio-shophouse-for-rent-at-siam-oriental-star-in-nong-prue-pattaya-u2000838" target="_blank">kaibaanthai</a></td></tr>
+      <tr class="bad"><td>⚠️ Pratumnak 5 — шопхаус (неск. юнитов)</td><td>30–35 000 ฿</td><td>30 м²</td><td>✅ 1 этаж</td><td>≈1.5 км</td><td>· тихая зона</td><td><a href="https://www.thailand-property.com/ads/commercial-for-rent-in-nong-prue-chonburi_b510f9cf3b70-a660-2a62-4c3c-c4e5d089" target="_blank">смотреть</a></td></tr>
+      <tr class="bad"><td>⚠️ Aurora Pratumnak (офис)</td><td>18 000 ฿</td><td>45 м²</td><td>✅ 1 этаж</td><td>≈2.4 км</td><td>· сев. Пратумнак</td><td><a href="https://www.kaibaanthai.com/en/property-rent/office-for-rent-at-aurora-pratumnak-in-nong-prue-pattaya-u1740020" target="_blank">kaibaanthai</a></td></tr>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>📊 Бизнес-аналитика топ-вариантов</h2>
+    <div class="cards">
+      <div class="card top">
+        <h3>★ View Talay 7 <span class="score" style="background:#1faa59">8.3 / 10</span></h3>
+        <div class="kv"><b>Аренда:</b> 17–18k ฿ · 48 м² · 1 этаж ✅</div>
+        <div class="kv"><b>Локация:</b> ~350 м от Foodmart, стык Тапрайя/Джомтьен, у пляжа Донгтан</div>
+        <div class="kv"><b>Трафик:</b> жильцы кондо + поток на пляж; минимаркет/кофейня рядом</div>
+        <div class="kv"><b>Буфер:</b> ближайший крипто-конкурент ~1.07 км — чисто</div>
+        <p class="pros">＋ Идеальная локация и цена, 1 этаж, чистый буфер</p>
+        <p class="cons">− ⚠️ возможно сдан до 2027 (звонить!); коммерч. блок кондо, не прямой фронт на трассу</p>
+      </div>
+      <div class="card">
+        <h3>🎯 Точка у Foodmart <span class="score" style="background:#f08c00">7.2 / 10</span></h3>
+        <div class="kv"><b>Локация:</b> Тапрайя у Foodmart — главная артерия, макс. трафик и видимость</div>
+        <div class="kv"><b>Трафик:</b> 🔝 супермаркет 2452 отзыва, кондо, рынок Тхеппрасит рядом</div>
+        <div class="kv"><b>Конкурент:</b> ⚠️ Money Exchange Group в 625 м (С-З) — брать южнее/восточнее</div>
+        <div class="kv"><b>Как искать:</b> через агентов (ниже) или ногами по вывескам ให้เช่า</div>
+        <p class="pros">＋ Лучшие трафик/видимость, узнаваемый ориентир</p>
+        <p class="cons">− Конкурент в 625 м, готового объявления в базах нет</p>
+      </div>
+      <div class="card">
+        <h3>🟢 Тхеппрасит-роуд <span class="score" style="background:#5b8def">7.2 / 10</span></h3>
+        <div class="kv"><b>Аренда:</b> 32k ฿ · 65 м² · 1 этаж, витрина ✅</div>
+        <div class="kv"><b>Локация:</b> главная торговая улица, фронт на дорогу, рынок Тхеппрасит</div>
+        <div class="kv"><b>Трафик:</b> очень высокий (рынок, сквозная), отличная видимость</div>
+        <p class="pros">＋ Прямой уличный фронт, трафик рынка, чисто по конкурентам</p>
+        <p class="cons">− Дороже (32k), ≈2 км от Foodmart</p>
+      </div>
+    </div>
+    <p class="note">Баллы — экспертная оценка по твоим весам (трафик · аренда · витрина) с штрафом за близость к крипто-конкурентам.</p>
+  </section>
+
+  <section>
+    <h2>📞 Агентства для прямого контакта <span style="font-weight:400;font-size:14px;color:#667">(особенно по точке у Foodmart)</span></h2>
+    <div class="scroll">
+    <table>
+      <tr><th>Агентство</th><th>Профиль</th><th>Контакт</th></tr>
+      <tr><td>Pattaya Condo &amp; Homes</td><td>по View Talay 7 — спросить статус и соседние юниты</td><td>+66 64 249 1428</td></tr>
+      <tr><td>Pattaya Prestige Properties</td><td>коммерция Джомтьен (PP12322/25)</td><td>+66 38 415 800</td></tr>
+      <tr><td>Jomtien Property</td><td>коммерция Джомтьен</td><td>+66 94 253 0427</td></tr>
+      <tr><td>Rusich Property 🇷🇺</td><td>русскоязычное, Паттайя</td><td>rusich.life</td></tr>
+      <tr><td>Страна Улыбок 🇷🇺</td><td>русскоязычное</td><td>landofsmile-property.ru</td></tr>
+      <tr><td>2Thai 🇷🇺</td><td>русскоязычное, коммерция</td><td>2thai.ru</td></tr>
+    </table>
+    </div>
+    <p class="note">🏠 На карте (слой «Агентства») — офисы агентств прямо в зоне (в т.ч. русские: Kopchenoff, LETO, GOLDEN HOUSE, Pattayahomes, Keystone). Можно зайти ногами.</p>
+  </section>
+
+  <section>
+    <h2>🔴 Конкуренты — крипта / рубли / безнал</h2>
+    <div class="scroll">
+    <table>
+      <tr><th>Точка</th><th>Профиль</th><th>Где</th><th>Статус</th></tr>
+      <tr><td>★ Money Exchange Group <span class="badge b-red">НОВЫЙ</span></td><td>рубли, безнал, перевод на Сбербанк (рус.)</td><td>Soi Thappraya 12</td><td><b>625 м от Foodmart!</b></td></tr>
+      <tr><td>Space Exchange <span class="badge b-red">НОВЫЙ</span></td><td>обмен валют, рус., QR</td><td>Nongprue 352/214</td><td>~1.3 км</td></tr>
+      <tr><td>EX24 Pro ×3</td><td>крипта/рубли/карты</td><td>Пратамнак · Тапрайя · Наклуа</td><td><span class="badge b-red">гнёзда</span></td></tr>
+      <tr><td>Senate Exchange ×3</td><td>крипта/рубли/МИР</td><td>Рус. рынок · Центр · Наклуа</td><td><span class="badge b-red">гнёзда</span></td></tr>
+      <tr><td>Cash &amp; Go</td><td>обмен валют (рус.)</td><td>Sea Hill Mansion 389/29</td><td><span class="badge b-red">гнездо №1</span></td></tr>
+      <tr><td>BTC BAR · ProMoneyExchange · Xchanger <span class="badge b-red">НОВЫЕ</span></td><td>биткоин / рус. обмен</td><td>центр · юг Джомтьена</td><td>далеко</td></tr>
+    </table>
+    </div>
+    <p class="note">🟠 Фиат-будки (не прямые): сеть T.T. (~13 точек), Money Shop, PK, BP, SUPANTA FATCAT — наличный обмен. На карте — оранжевым.</p>
+  </section>
+
+</div>
+<footer>Подготовлено Claude Code · 29.05.2026 · Google Maps · FazWaz.ru · Thailand-Property · DotProperty · BahtSold · Hipflat · kaibaanthai · агентства · карта: Leaflet + Geoman</footer>
+
+<script>
+var FM = [12.90492, 100.8696753];
+
+var competitors = [
+  {n:"★ Money Exchange Group (НОВЫЙ)", lat:12.9104399, lng:100.8680074, d:"рубли · безнал · перевод на Сбербанк · рус. · Soi Thappraya 12"},
+  {n:"Space Exchange (НОВЫЙ)", lat:12.9162965, lng:100.8664422, d:"обмен валют · рус. · QR · Nongprue 352/214"},
+  {n:"EX24 Pro — Пратамнак (Soi 6)", lat:12.910188, lng:100.863688, d:"крипта/рубли/карты · 94 отзыва"},
+  {n:"Senate — Русский рынок Пратамнак", lat:12.9092571, lng:100.864606, d:"крипта/рубли/МИР · 351 отзыв"},
+  {n:"Cash & Go (рус.)", lat:12.9113191, lng:100.8633583, d:"обмен валют · Sea Hill Mansion 389/29"},
+  {n:"EX24 Pro — Тапрайя", lat:12.9136336, lng:100.8704716, d:"крипта/рубли/карты · 215 отзывов"},
+  {n:"Senate — Центральный", lat:12.91473, lng:100.871113, d:"крипта/рубли/МИР · 157 Thappraya · 598 отзывов"},
+  {n:"EX24 Pro — Наклуа", lat:12.9586941, lng:100.8882313, d:"крипта/рубли · север (далеко)"},
+  {n:"Senate — Наклуа", lat:12.9521635, lng:100.8889791, d:"крипта/рубли · север (далеко)"},
+  {n:"BTC BAR — Bitcoin (НОВЫЙ)", lat:12.9346297, lng:100.8861211, d:"биткоин/крипта · центр (далеко)"},
+  {n:"ProMoneyExchange (рус.)", lat:12.8604269, lng:100.8996107, d:"рус. обмен · юг Джомтьена (далеко)"},
+  {n:"Xchanger Обмен валют (рус.)", lat:12.8875414, lng:100.8818777, d:"рус. обмен · юг Джомтьена (далеко)"}
+];
+var cash = [
+  {n:"SUPANTA FATCAT Exchange", lat:12.9137456, lng:100.8657688, d:"обмен (фиат) · рус. отзывы · в гнезде"},
+  {n:"Money Shop Exchange", lat:12.912802, lng:100.8635268, d:"наличка · Phra Tam Nak 5"},
+  {n:"PK Currency Exchange", lat:12.9099756, lng:100.859148, d:"наличка · Phra Tamnak"},
+  {n:"BP Money Exchange", lat:12.9150551, lng:100.8614249, d:"наличка · Phra Tam Nak 4"},
+  {n:"CURRENCY EXCHANGE", lat:12.9150882, lng:100.8625604, d:"наличка · Phra Tam Nak 4"},
+  {n:"T.T. — Тапрайя (Pattaya Park)", lat:12.9103867, lng:100.8683909, d:"наличная сеть · рядом с зоной Foodmart"},
+  {n:"T.T. — Jomtien HQ", lat:12.8988503, lng:100.8669721, d:"наличная сеть"},
+  {n:"T.T. — Jomtien Soi 6", lat:12.8960073, lng:100.8696472, d:"наличная сеть"},
+  {n:"T.T. — Jomtien 2nd Rd", lat:12.8982909, lng:100.8722035, d:"наличная сеть"},
+  {n:"T.T. — Welcome Jomtien", lat:12.8840854, lng:100.8797639, d:"наличная сеть"},
+  {n:"T.T. — Cozy Beach", lat:12.9209465, lng:100.8604462, d:"наличная сеть"},
+  {n:"T.T. — Pattaya HQ", lat:12.9268087, lng:100.8761384, d:"наличная сеть (север)"}
+];
+var bank = [{n:"Krungthai Bank", lat:12.9094364, lng:100.8581304, d:"банк (не конкурент)"}];
+
+// 🟢 помещения-кандидаты
+var candidates = [
+  {n:"★ View Talay 7 (ЛУЧШИЙ по локации)", lat:12.90043, lng:100.86747, best:true, approx:false,
+   d:"17–18k ฿ · 48 м² · 1 этаж ✅ · ⚠️ возможно сдан до 2027 — звонить +66 64 249 1428",
+   url:"https://www.thailand-property.com/ads/commercial-for-rent-in-view-talay-condo-7-nong-prue-chonburi_8e29f15837d7-9971-0362-88e0-95e5d089"},
+  {n:"🟢 Jomtien Complex — студия-магазин", lat:12.9001, lng:100.8702, approx:true,
+   d:"15k ฿ · 30 м² · формат «лофт» — уточнить назначение",
+   url:"https://www.kaibaanthai.com/en/property-rent/studio-shophouse-for-rent-in-nong-prue-pattaya-u6205702"},
+  {n:"🟢 Shop на Тапрайя (под кондо)", lat:12.9072, lng:100.8686, approx:true,
+   d:"10k ฿ · 20 м² · 1 этаж · мелкий · объявл. 2024 — проверить",
+   url:"https://www.bahtsold.com/view/shop-for-rent-tappraya-road-pratamnak-at-south-pattaya-10-000-baht-514991"},
+  {n:"🟢 Mini Mart — Jomtien Soi 7", lat:12.8945, lng:100.8725, approx:true,
+   d:"35k ฿ · 52 м² · витрина · 50 м от пляжа · передача бизнеса",
+   url:"https://www.kaibaanthai.com/en/property-rent/shophouse-for-rent-in-bang-lamung-pattaya-u1983089"},
+  {n:"🟢 Джомтьен 2-я (PP12322/25)", lat:12.8895, lng:100.8755, approx:true,
+   d:"32.5–37.5k ฿ · 65–75 м² · офис-формат · уточнить",
+   url:"https://www.thailand-property.com/ads/1-bedroom-commercial-for-rent-in-nong-prue-chonburi_987eee334c8f-bcd1-d762-0a8d-3e81c089"},
+  {n:"🟢 Commercial Джомтьен (Jim Property)", lat:12.8950, lng:100.8748, approx:true,
+   d:"35k ฿ + 300k вход · 256 м² · большой · у пляжа",
+   url:"https://jimpropertyexperts.com/property/commercial-space-in-jomtien/"},
+  {n:"🟢 Тхеппрасит-роуд (фронт на дорогу)", lat:12.9195, lng:100.8810, approx:true,
+   d:"32k ฿ · 65 м² · 1 этаж витрина · трафик рынка",
+   url:"https://www.kaibaanthai.com/en/property-rent/3-bedroom-commercial-for-rent-in-bang-lamung-pattaya-u6218748"},
+  {n:"🟢 Shop South Pattaya Soi 3", lat:12.9210, lng:100.8782, approx:true,
+   d:"30–35k ฿ · 80 м² · витрина · свежее 28.01.26",
+   url:"https://www.bahtsold.com/view/shop-space-in-south-pattaya-soi-3-ready-for-business--566883"},
+  {n:"⚠️ Siam Oriental Plaza (Пратумнак)", lat:12.8992, lng:100.8693, approx:true,
+   d:"16k ฿ · 42 м² · в кондо-блоке · близко к гнезду",
+   url:"https://www.kaibaanthai.com/en/property-rent/shophouse-for-rent-at-siam-oriental-plaza-in-nong-prue-pattaya-u6155969"},
+  {n:"⚠️ Siam Oriental Star (Soi 6)", lat:12.8990, lng:100.8688, approx:true,
+   d:"27k ฿ · 28 м² · 1 этаж · у Русского рынка",
+   url:"https://www.kaibaanthai.com/en/property-rent/studio-shophouse-for-rent-at-siam-oriental-star-in-nong-prue-pattaya-u2000838"},
+  {n:"🟢 Джомтьен 2-я — PP12325", lat:12.8889, lng:100.8762, approx:true,
+   d:"37.5k ฿ · 75 м² · Pattaya Prestige",
+   url:"https://www.thailand-property.com/ads/1-bedroom-commercial-for-rent-in-nong-prue-chonburi_a7acec0627a6-b791-93d2-21fd-3e81c089"},
+  {n:"🟢 Shop Soi Buakhao (центр)", lat:12.9250, lng:100.8815, approx:true,
+   d:"37k ฿ · 38 м² · 1 этаж · торговая улица",
+   url:"https://www.kaibaanthai.com/en/property-rent/1-bedroom-shophouse-for-rent-in-bang-lamung-pattaya-u6163167"},
+  {n:"⚠️ Pratumnak 5 — шопхаус", lat:12.9080, lng:100.8640, approx:true,
+   d:"30–35k ฿ · 30 м² · неск. юнитов · тихая зона",
+   url:"https://www.thailand-property.com/ads/commercial-for-rent-in-nong-prue-chonburi_b510f9cf3b70-a660-2a62-4c3c-c4e5d089"},
+  {n:"⚠️ Aurora Pratumnak (офис)", lat:12.9189675, lng:100.8612603, approx:false,
+   d:"18k ฿ · 45 м² · 1 этаж · сев. Пратумнак",
+   url:"https://www.kaibaanthai.com/en/property-rent/office-for-rent-at-aurora-pratumnak-in-nong-prue-pattaya-u1740020"}
+];
+
+// 🏠 агентства недвижимости (контакты, из Google Maps)
+var agencies = [
+  {n:"Kopchenoff Real Estate 🇷🇺", lat:12.9131157, lng:100.8618529, d:"агентство недвижимости (рус.)"},
+  {n:"LETO Real Estate 🇷🇺", lat:12.9081388, lng:100.8603619, d:"агентство недвижимости (рус.)"},
+  {n:"GOLDEN HOUSE Property 🇷🇺", lat:12.914807, lng:100.8625026, d:"агентство недвижимости (рус.)"},
+  {n:"Pattayahomes", lat:12.9139213, lng:100.8617707, d:"агентство недвижимости"},
+  {n:"Keystone Property", lat:12.9127059, lng:100.8616964, d:"агентство недвижимости"},
+  {n:"Megapolis Pratamnak", lat:12.9137255, lng:100.8616074, d:"аренда недвижимости"},
+  {n:"Thai-Residence", lat:12.9115662, lng:100.8631688, d:"агентство недвижимости"},
+  {n:"The residence Jomtien", lat:12.9099655, lng:100.868908, d:"агентство (у Тапрайя)"}
+];
+
+// 🗺 зоны/районы (полигоны)
+var zones = [
+  {t:"🎯 Целевая зона — Тапрайя/Foodmart", c:"#1668c4", center:[12.9035,100.8690],
+   ll:[[12.8985,100.8655],[12.9085,100.8660],[12.9085,100.8730],[12.8985,100.8725]],
+   d:"Главная дорога Тапрайя, Foodmart, кондо. Трафик высокий. Буфер от конкурентов средний — брать южнее/восточнее."},
+  {t:"🟢 Джомтьен-Бич", c:"#1faa59", center:[12.8920,100.8745],
+   ll:[[12.8840,100.8690],[12.9010,100.8690],[12.9010,100.8800],[12.8840,100.8800]],
+   d:"Пляж, туристы, экспаты. Чисто по крипто-конкурентам. Высокий пеший трафик."},
+  {t:"🟡 Тхеппрасит (рынок)", c:"#e07b00", center:[12.9210,100.8830],
+   ll:[[12.9150,100.8755],[12.9265,100.8755],[12.9265,100.8895],[12.9150,100.8895]],
+   d:"Рынок Тхеппрасит — очень высокий трафик вечером (вт/чт/сб/вс). Чище по конкурентам."},
+  {t:"🔴 Пратумнак — обменное гнездо", c:"#e23b3b", center:[12.9105,100.8638],
+   ll:[[12.9055,100.8600],[12.9165,100.8600],[12.9165,100.8675],[12.9055,100.8675]],
+   d:"Русский рынок, Soi 4–6: Senate, EX24, Cash&Go. Рус. зона, НО ядро конкурентов — избегать центр."},
+  {t:"🌟 Перспективная зона (на развитие)", c:"#f59f00", center:[12.9178,100.8628],
+   ll:[[12.9138,100.8588],[12.9220,100.8588],[12.9220,100.8665],[12.9138,100.8665]],
+   d:"Отмечено Романом как перспективное направление — район Aurora Pratumnak / запад Пратумнака (Royal Cliff, Cozy Beach). Рассмотреть для реализации."}
+];
+
+// 🛣 живые торговые улицы (полилинии)
+var streets = [
+  {t:"Тапрайя-роуд — главная артерия (авто-трафик высокий)", c:"#16548a",
+   ll:[[12.9145,100.8702],[12.9104,100.8684],[12.90492,100.8696753],[12.9004,100.8675],[12.8975,100.8662]]},
+  {t:"Тхеппрасит-роуд — рынок, пешеходный трафик пик вечером", c:"#e07b00",
+   ll:[[12.9085,100.8712],[12.9135,100.8790],[12.9200,100.8835],[12.9226,100.8842]]},
+  {t:"Джомтьен-Бич-роуд — пляжный променад, туристы", c:"#11b3c6",
+   ll:[[12.9015,100.8682],[12.8950,100.8722],[12.8880,100.8768],[12.8835,100.8800]]},
+  {t:"Джомтьен 2-я дорога — рестораны/магазины", c:"#2aa84a",
+   ll:[[12.9000,100.8662],[12.8945,100.8702],[12.8885,100.8745]]}
+];
+
+// ===== КАРТА =====
+var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'});
+var sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'});
+var map = L.map('map',{center:[12.9055,100.8700],zoom:15,layers:[osm]});
+map.createPane('candPane'); map.getPane('candPane').style.zIndex=650;   // помещения — поверх всего
+map.createPane('cmtPane'); map.getPane('cmtPane').style.zIndex=655;     // комментарии — самые верхние
+
+function dist(a,b){var R=6371000,dLat=(b[0]-a[0])*Math.PI/180,dLng=(b[1]-a[1])*Math.PI/180,la1=a[0]*Math.PI/180,la2=b[0]*Math.PI/180,x=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)*Math.sin(dLng/2);return Math.round(R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x)));}
+function km(m){return m>=1000?(m/1000).toFixed(2)+' км':m+' м';}
+function nearestComp(lat,lng){var b=null;competitors.forEach(function(c){var d=dist([lat,lng],[c.lat,c.lng]);if(!b||d<b.d)b={d:d,n:c.n};});return b;}
+
+var competitorsLayer=L.layerGroup(),cashLayer=L.layerGroup(),bankLayer=L.layerGroup(),
+    candidatesLayer=L.layerGroup(),agenciesLayer=L.layerGroup(),foodmartLayer=L.layerGroup(),
+    nestsLayer=L.layerGroup(),zonesLayer=L.layerGroup(),streetsLayer=L.layerGroup();
+
+function cleanName(n){
+  try{
+    return n.replace(/[☀-➿]/g,'').replace(/[︀-️]/g,'')
+            .replace(/[\u{1F000}-\u{1FAFF}]/gu,'').replace(/[\u{1F1E6}-\u{1F1FF}]/gu,'')
+            .replace(/\((НОВЫЙ|НОВЫЕ)\)/g,'').replace(/\s+/g,' ').trim();
+  }catch(e){ return (n||'').replace(/[^Ѐ-ӿ -~]/g,'').trim(); }
+}
+function gmaps(p){
+  var q='';
+  try{ q=encodeURIComponent(cleanName(p.n)); }catch(e){ q=''; }
+  if(!q) return 'https://www.google.com/maps/search/?api=1&query='+p.lat+','+p.lng;
+  return 'https://www.google.com/maps/search/'+q+'/@'+p.lat+','+p.lng+',18z';
+}
+function tipFor(p){ return '<b>'+p.n+'</b><br>'+p.d+'<br><span style="color:#1668c4">нажми — откроется карточка</span>'; }
+function popupHtml(p,type){
+  var h='<div style="min-width:200px;font-size:13px;line-height:1.5"><b>'+p.n+'</b><br>'+p.d+'<br>📍 до Foodmart: <b>'+km(dist([p.lat,p.lng],FM))+'</b>';
+  if(type==='cand'){
+    var nc=nearestComp(p.lat,p.lng); if(nc)h+='<br>🔴 ближ. конкурент: '+km(nc.d);
+    if(p.approx)h+='<br>⚠️ <i>точка примерная — адрес в объявлении</i>';
+    h+='<a href="'+p.url+'" target="_blank" rel="noopener" style="display:block;margin-top:10px;padding:10px;background:#1faa59;color:#fff;border-radius:8px;font-weight:700;text-align:center;text-decoration:none">🔗 Смотреть объявление →</a>';
+  } else {
+    h+='<a href="'+gmaps(p)+'" target="_blank" rel="noopener" style="display:block;margin-top:10px;padding:10px;background:#1668c4;color:#fff;border-radius:8px;font-weight:700;text-align:center;text-decoration:none">📍 Открыть на Google Maps →</a>';
+  }
+  return h+'</div>';
+}
+function addPts(arr,layer,color,radius,type){
+  arr.forEach(function(p){
+    var rad=(type==='cand')?(p.best?16:13):radius, w=(type==='cand')?4:2, fo=(type==='cand')?1:.95;
+    var opt={radius:rad,color:'#fff',weight:w,fillColor:color,fillOpacity:fo};
+    if(type==='cand')opt.pane='candPane';
+    var m=L.circleMarker([p.lat,p.lng],opt);
+    m.bindTooltip(tipFor(p),{sticky:true});
+    m.bindPopup(popupHtml(p,type),{maxWidth:280});
+    m.addTo(layer);
+    if(type==='cand'&&m.bringToFront)m.bringToFront();
+  });
+}
+addPts(competitors,competitorsLayer,'#e23b3b',9,'comp');
+addPts(cash,cashLayer,'#f08c00',7,'cash');
+addPts(bank,bankLayer,'#8a8f98',6,'bank');
+addPts(agencies,agenciesLayer,'#7a4a2b',7,'agency');
+addPts(candidates,candidatesLayer,'#1faa59',9,'cand');
+
+// Foodmart
+var fmM=L.circleMarker(FM,{radius:11,color:'#fff',weight:3,fillColor:'#1668c4',fillOpacity:1}).addTo(foodmartLayer);
+fmM.bindTooltip('🎯 Foodmart',{permanent:true,direction:'top',className:'zonelbl'});
+fmM.on('click',function(){window.open('https://www.google.com/maps/search/Food+Mart/@12.90492,100.8696753,18z','_blank');});
+L.circle(FM,{radius:500,color:'#1668c4',fillColor:'#1668c4',fillOpacity:.05,weight:1,dashArray:'5 5',interactive:false}).addTo(foodmartLayer);
+L.polyline([FM,[12.9104399,100.8680074]],{color:'#e23b3b',weight:2,dashArray:'4 6',interactive:false}).addTo(foodmartLayer);
+
+// гнёзда (декоративные круги — не перехватывают клик по точкам)
+L.circle([12.9101,100.8643],{radius:450,color:'#e23b3b',fillColor:'#e23b3b',fillOpacity:.07,weight:1,interactive:false}).addTo(nestsLayer);
+L.circle([12.9142,100.8708],{radius:300,color:'#e23b3b',fillColor:'#e23b3b',fillOpacity:.07,weight:1,interactive:false}).addTo(nestsLayer);
+
+// зоны
+zones.forEach(function(z){
+  L.polygon(z.ll,{color:z.c,fillColor:z.c,fillOpacity:.10,weight:2}).addTo(zonesLayer).bindPopup('<b>'+z.t+'</b><br>'+z.d);
+  L.marker(z.center,{opacity:0}).addTo(zonesLayer).bindTooltip(z.t,{permanent:true,direction:'center',className:'zonelbl'});
+});
+// улицы
+streets.forEach(function(s){
+  L.polyline(s.ll,{color:s.c,weight:6,opacity:.8}).addTo(streetsLayer).bindPopup('<b>'+s.t+'</b>').bindTooltip(s.t,{sticky:true});
+});
+
+[zonesLayer,streetsLayer,nestsLayer,foodmartLayer,competitorsLayer,cashLayer,bankLayer,agenciesLayer,candidatesLayer].forEach(function(l){l.addTo(map);});
+
+// ===== Geoman + редакторы (Роман/Олег) + комментарии + сохранение =====
+var LS_KEY='foodmart_marks_v1';
+var EDITORS={'Роман':'#8e44ad','Олег':'#1a3e8c'};
+var currentEditor='Роман';
+var myMarks=new L.FeatureGroup().addTo(map);
+function curColor(){return EDITORS[currentEditor]||'#8e44ad';}
+function pin(color){return L.divIcon({className:'',iconSize:[28,28],iconAnchor:[14,14],html:'<div style="background:'+color+';width:24px;height:24px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 6px rgba(0,0,0,.6)"></div>'});}
+function setEditor(name){
+  currentEditor=name; var c=curColor();
+  if(map.pm)map.pm.setGlobalOptions({layerGroup:myMarks,pathOptions:{color:c,fillColor:c,fillOpacity:0.25,weight:3}});
+  var b1=document.getElementById('ed-roman'), b2=document.getElementById('ed-oleg');
+  if(b1)b1.style.boxShadow=(name==='Роман')?'0 0 0 3px #1d2733':'none';
+  if(b2)b2.style.boxShadow=(name==='Олег')?'0 0 0 3px #1d2733':'none';
+  var ind=document.getElementById('editorInd');
+  if(ind)ind.innerHTML='✏️ Сейчас рисует: <b style="color:'+c+'">'+name+'</b>';
+}
+if(map.pm){
+  try{map.pm.setLang('ru');}catch(e){}
+  map.pm.addControls({position:'topleft',drawMarker:true,drawPolyline:true,drawPolygon:true,drawRectangle:true,drawCircle:true,drawCircleMarker:false,drawText:false,editMode:true,dragMode:true,removalMode:true,rotateMode:false,cutPolygon:false});
+}
+function llToArr(lls){return lls.map(function(x){return Array.isArray(x)?llToArr(x):[x.lat,x.lng];});}
+function markPopup(layer){
+  var who=layer._author||'', txt=layer._markText||'', c=layer._color||'#333';
+  return '<div style="font-size:13px;min-width:150px">'+(who?'<b style="color:'+c+'">✏️ '+who+'</b>':'')+(txt?'<br>💬 '+txt:'<br><i style="color:#888">двойной клик — добавить/изменить комментарий</i>')+'</div>';
+}
+function setLabel(layer){
+  try{ if(layer.getTooltip&&layer.getTooltip())layer.unbindTooltip(); }catch(e){}
+  if(layer._markText){
+    var c=layer._color||'#1d2733';
+    layer.bindTooltip('💬 '+layer._markText,{permanent:true,direction:'top',className:'cmtlbl',offset:[0,-8]});
+    try{var el=layer.getTooltip().getElement(); if(el){el.style.background=c;}}catch(e){}
+  }
+}
+function bindComment(layer){
+  layer.on('dblclick',function(e){
+    if(e&&e.originalEvent&&L.DomEvent)L.DomEvent.stopPropagation(e);
+    var t=prompt('Комментарий (виден прямо на карте):',layer._markText||'');
+    if(t!==null){layer._markText=t;layer.bindPopup(markPopup(layer));setLabel(layer);saveMarks();}
+  });
+}
+function attachMark(layer,author,text){
+  var c=EDITORS[author]||'#8e44ad';
+  layer._author=author; layer._color=c; layer._markText=text||'';
+  if(layer instanceof L.Marker){layer.setIcon(pin(c));}
+  else if(layer.setStyle){layer.setStyle({color:c,fillColor:c,fillOpacity:0.25,weight:3});}
+  layer.bindPopup(markPopup(layer)); bindComment(layer); setLabel(layer);
+  if(layer.on){layer.on('pm:edit',saveMarks);layer.on('pm:dragend',saveMarks);}
+}
+function saveMarks(){
+  var arr=[];
+  myMarks.eachLayer(function(l){
+    var o={author:l._author||'',color:l._color||'#8e44ad',text:l._markText||''};
+    if(l instanceof L.Circle){arr.push({t:'circle',ll:[l.getLatLng().lat,l.getLatLng().lng],r:l.getRadius(),o:o});}
+    else if(l instanceof L.Rectangle){arr.push({t:'rect',ll:llToArr(l.getLatLngs()),o:o});}
+    else if(l instanceof L.Polygon){arr.push({t:'poly',ll:llToArr(l.getLatLngs()),o:o});}
+    else if(l instanceof L.Polyline){arr.push({t:'line',ll:llToArr(l.getLatLngs()),o:o});}
+    else if(l instanceof L.Marker){arr.push({t:'marker',ll:[l.getLatLng().lat,l.getLatLng().lng],o:o});}
+  });
+  try{localStorage.setItem(LS_KEY,JSON.stringify(arr));}catch(e){}
+}
+function makeLayer(d){
+  var c=d.o.color||'#8e44ad', st={color:c,fillColor:c,fillOpacity:0.25,weight:3}, layer=null;
+  if(d.t==='circle')layer=L.circle(d.ll,{radius:d.r,color:c,fillColor:c,fillOpacity:0.25,weight:3});
+  else if(d.t==='rect')layer=L.rectangle(d.ll,st); else if(d.t==='poly')layer=L.polygon(d.ll,st);
+  else if(d.t==='line')layer=L.polyline(d.ll,st); else if(d.t==='marker')layer=L.marker(d.ll,{icon:pin(c)});
+  if(layer){layer._author=d.o.author||'';layer._color=c;layer._markText=d.o.text||'';layer.bindPopup(markPopup(layer));bindComment(layer);if(layer.on){layer.on('pm:edit',saveMarks);layer.on('pm:dragend',saveMarks);}myMarks.addLayer(layer);setLabel(layer);}
+}
+function loadMarks(){
+  var raw=null;try{raw=localStorage.getItem(LS_KEY);}catch(e){}if(!raw)return;
+  var arr;try{arr=JSON.parse(raw);}catch(e){return;}
+  arr.forEach(makeLayer);
+}
+var undoStack=[];
+map.on('pm:create',function(e){
+  var l=e.layer;
+  attachMark(l,currentEditor,'');
+  if(l instanceof L.Marker){var t=prompt('Комментарий к точке (виден на карте):','');if(t)l._markText=t;l.bindPopup(markPopup(l));}
+  setLabel(l);
+  undoStack.push(l);
+  saveMarks();
+});
+map.on('pm:remove',saveMarks);map.on('pm:edit',saveMarks);
+loadMarks();
+
+function exportMarks(){var data='';try{data=localStorage.getItem(LS_KEY)||'[]';}catch(e){data='[]';}var blob=new Blob([data],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pometki_pattaya.json';document.body.appendChild(a);a.click();document.body.removeChild(a);}
+function importMarks(input){
+  var f=input.files&&input.files[0];if(!f)return;var r=new FileReader();
+  r.onload=function(){
+    var incoming=[];try{incoming=JSON.parse(r.result);}catch(e){alert('Файл не распознан');return;}
+    var cur=[];try{cur=JSON.parse(localStorage.getItem(LS_KEY)||'[]');}catch(e){}
+    var merged=cur.concat(incoming);
+    try{localStorage.setItem(LS_KEY,JSON.stringify(merged));}catch(e){}
+    myMarks.clearLayers();loadMarks();
+    alert('Пометки добавлены (объединены с твоими). Всего на карте: '+merged.length);
+  };
+  r.readAsText(f);input.value='';
+}
+function clearMarks(){if(!confirm('Удалить ВСЕ пометки на карте (твои и загруженные)?'))return;myMarks.clearLayers();undoStack=[];try{localStorage.removeItem(LS_KEY);}catch(e){}}
+function undoLast(){
+  var l=undoStack.pop();
+  if(l&&myMarks.hasLayer(l)){myMarks.removeLayer(l);saveMarks();return;}
+  var a=[];myMarks.eachLayer(function(x){a.push(x);});
+  if(a.length){myMarks.removeLayer(a[a.length-1]);saveMarks();}else{alert('Нет пометок для отмены');}
+}
+function fitFoodmart(){map.setView(FM,16);}
+
+var overlays={
+  '🗺 Зоны/районы':zonesLayer,
+  '🛣 Живые улицы':streetsLayer,
+  '🔴 Крипто/рубль-конкуренты':competitorsLayer,
+  '🟠 Фиат-будки':cashLayer,
+  '⚫ Банки':bankLayer,
+  '🟢 Помещения-кандидаты':candidatesLayer,
+  '🏠 Агентства (контакты)':agenciesLayer,
+  '🎯 Зона Foodmart':foodmartLayer,
+  '🚫 Гнёзда конкурентов':nestsLayer,
+  '✏️ Пометки (Роман + Олег)':myMarks
+};
+L.control.layers({'Карта (OSM)':osm,'🛰 Спутник':sat},overlays,{collapsed:false,position:'topright'}).addTo(map);
+function startComment(){ if(map.pm)map.pm.enableDraw('Marker'); }
+setEditor('Роман');
+</script>
+</body>
+</html>
