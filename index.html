@@ -57,6 +57,12 @@
   .zonelbl{background:rgba(255,255,255,.82);border:0;box-shadow:none;font-weight:700;font-size:12px;color:#22425e}
   .cmtlbl{color:#fff;background:#1d2733;border:0;font-weight:700;font-size:12.5px;padding:4px 9px;border-radius:8px;box-shadow:0 2px 7px rgba(0,0,0,.45);white-space:nowrap}
   .cmtlbl .leaflet-tooltip-tip{display:none}
+  /* Мобильная панель слоёв: компактная, со скроллом, никогда не на весь экран */
+  @media (max-width:768px){
+    .leaflet-control-layers{max-height:66vh;overflow-y:auto;-webkit-overflow-scrolling:touch;max-width:72vw;}
+    .leaflet-control-layers-expanded{font-size:13px;line-height:1.5}
+    .leaflet-control-layers-toggle{width:40px;height:40px}
+  }
 </style>
 </head>
 <body>
@@ -528,7 +534,8 @@ var overlays={
   '🚫 Гнёзда конкурентов':nestsLayer,
   '✏️ Пометки (Роман + Олег)':myMarks
 };
-L.control.layers({'Карта (OSM)':osm,'🛰 Спутник':sat},overlays,{collapsed:false,position:'topright'}).addTo(map);
+var layersCollapsed = L.Browser.mobile || (window.innerWidth>0 && window.innerWidth<=768);
+L.control.layers({'Карта (OSM)':osm,'🛰 Спутник':sat},overlays,{collapsed:layersCollapsed,position:'topright'}).addTo(map);
 function startComment(){ if(map.pm)map.pm.enableDraw('Marker'); }
 setEditor('Роман');
 </script>
